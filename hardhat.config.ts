@@ -1,15 +1,14 @@
-import dotenv from "dotenv";
 import "@nomicfoundation/hardhat-chai-matchers";
 import "@nomicfoundation/hardhat-ethers";
+import dotenv from "dotenv";
 import "hardhat-gas-reporter";
 import "hardhat-ignore-warnings";
+import { HardhatUserConfig } from "hardhat/config";
 import "solidity-coverage";
 
-import { HardhatUserConfig } from "hardhat/config";
-
+import "./hardhat/coverage";
 import "./hardhat/provider";
 import "./hardhat/testEnvironment";
-import "./hardhat/coverage";
 
 dotenv.config();
 

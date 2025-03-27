@@ -22,8 +22,13 @@ class CustomProvider extends ProviderWrapper implements Test {
     switch (args.method) {
       case "evm_revert": {
         const result = await this._wrappedProvider.request(args);
-        this.lastBlockSnapshot = this.lastBlockSnapshotForDecrypt = await (this._wrappedProvider.request({ method: "eth_blockNumber" }) as Promise<string>).then(parseInt);
-        this.lastCounterRand = await this._wrappedProvider.request({ method: "eth_call", params: [{ to: "0x000000000000000000000000000000000000005d", data: "0x1f20d85c" }, "latest"] }) as number;
+        this.lastBlockSnapshot = this.lastBlockSnapshotForDecrypt = await (
+          this._wrappedProvider.request({ method: "eth_blockNumber" }) as Promise<string>
+        ).then(parseInt);
+        this.lastCounterRand = (await this._wrappedProvider.request({
+          method: "eth_call",
+          params: [{ to: "0x000000000000000000000000000000000000005d", data: "0x1f20d85c" }, "latest"],
+        })) as number;
         return result;
       }
       case "get_lastBlockSnapshot":
@@ -33,10 +38,10 @@ class CustomProvider extends ProviderWrapper implements Test {
         return this.lastBlockSnapshotForDecrypt;
 
       case "set_lastBlockSnapshot":
-        return this.lastBlockSnapshot = Array.isArray(args.params!) && args.params[0];
+        return (this.lastBlockSnapshot = Array.isArray(args.params!) && args.params[0]);
 
       case "set_lastBlockSnapshotForDecrypt":
-        return this.lastBlockSnapshotForDecrypt = Array.isArray(args.params!) && args.params[0];
+        return (this.lastBlockSnapshotForDecrypt = Array.isArray(args.params!) && args.params[0]);
 
       default:
         return this._wrappedProvider.request(args);

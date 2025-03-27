@@ -5,7 +5,12 @@ pragma solidity ^0.8.24;
 import { TFHE, ebool, euint64 } from "fhevm/lib/TFHE.sol";
 
 interface IConfidentialFungibleTokenReceiver {
-    function onConfidentialTransferReceived(address operator, address from, euint64 value, bytes calldata data) external returns (ebool);
+    function onConfidentialTransferReceived(
+        address operator,
+        address from,
+        euint64 value,
+        bytes calldata data
+    ) external returns (ebool);
 }
 
 function tryIncrease(euint64 oldValue, euint64 delta) returns (ebool success, euint64 updated) {
@@ -90,7 +95,12 @@ abstract contract ConfidentialFungibleToken {
         result.allowTransient(msg.sender);
     }
 
-    function transferFromAndCall(address from, address to, euint64 amount, bytes calldata data) public virtual returns (ebool result) {
+    function transferFromAndCall(
+        address from,
+        address to,
+        euint64 amount,
+        bytes calldata data
+    ) public virtual returns (ebool result) {
         require(isOperator(from, msg.sender), UnauthorizedSpender(from, msg.sender));
         result = _transferAndCall(from, to, amount, data);
         result.allowTransient(msg.sender);
@@ -112,7 +122,12 @@ abstract contract ConfidentialFungibleToken {
         return _update(from, to, amount);
     }
 
-    function _transferAndCall(address from, address to, euint64 amount, bytes calldata data) internal returns (ebool result) {
+    function _transferAndCall(
+        address from,
+        address to,
+        euint64 amount,
+        bytes calldata data
+    ) internal returns (ebool result) {
         // Try to transfer amount + replace input with actually transferred amount.
         euint64 transferred = _transfer(from, to, amount).select(amount, 0.asEuint64());
         transferred.allowTransient(to);
@@ -149,24 +164,26 @@ abstract contract ConfidentialFungibleToken {
 
         if (from == address(0)) {
             (result, ptr) = tryIncrease(_totalSupply, amount);
-            _totalSupply = ptr;
             ptr.allowThis();
+            _totalSupply = ptr;
         } else {
             (result, ptr) = tryDecrease(_balances[from], amount);
-            _balances[from] = ptr;
             ptr.allowThis();
             ptr.allow(to);
+            _balances[from] = ptr;
         }
 
         euint64 transferred = result.select(amount, 0.asEuint64());
 
         if (to == address(0)) {
-            ptr = _totalSupply = _totalSupply.sub(transferred);
+            ptr = _totalSupply.sub(transferred);
             ptr.allowThis();
+            _totalSupply = ptr;
         } else {
-            ptr = _balances[to] = _balances[to].add(transferred);
+            ptr = _balances[to].add(transferred);
             ptr.allowThis();
             ptr.allow(to);
+            _balances[to] = ptr;
         }
 
         emit ConfidentialTransfer(from, to, transferred);
@@ -180,7 +197,9 @@ abstract contract ConfidentialFungibleToken {
         bytes calldata data
     ) private returns (ebool) {
         if (to.code.length > 0) {
-            try IConfidentialFungibleTokenReceiver(to).onConfidentialTransferReceived(operator, from, value, data) returns (ebool retval) {
+            try
+                IConfidentialFungibleTokenReceiver(to).onConfidentialTransferReceived(operator, from, value, data)
+            returns (ebool retval) {
                 return retval;
             } catch (bytes memory reason) {
                 if (reason.length == 0) {

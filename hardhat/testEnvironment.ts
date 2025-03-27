@@ -1,6 +1,7 @@
+import { setCode } from "@nomicfoundation/hardhat-network-helpers";
 import { ethers } from "ethers";
 import { task } from "hardhat/config";
-import { setCode } from "@nomicfoundation/hardhat-network-helpers";
+
 import { impersonate } from "../test/helpers/accounts";
 
 export const ACL_ADDRESS = "0xfee8407e2f5e3ee68ad77cae98c434e637f516e5";
@@ -17,14 +18,22 @@ task("test", async (_taskArgs, hre, runSuper) => {
     const oneSigner = await impersonate(hre, "0x0000000000000000000000000000000000000001");
     const kmsSigner = new ethers.Wallet(KMSSIGNER_PK);
 
-    const [,,gateway,input,kms,] = await Promise.all(Object.entries({
-      [ACL_ADDRESS]: "fhevm-core-contracts/artifacts/contracts/ACL.sol/ACL.json",
-      [FHEPAYMENT_ADDRESS]: "fhevm-core-contracts/artifacts/contracts/FHEPayment.sol/FHEPayment.json",
-      [GATEWAYCONTRACT_ADDRESS]: "fhevm-core-contracts/artifacts/gateway/GatewayContract.sol/GatewayContract.json",
-      [INPUTVERIFIER_ADDRESS]: "fhevm-core-contracts/artifacts/contracts/InputVerifier.coprocessor.sol/InputVerifier.json",
-      [KMSVERIFIER_ADDRESS]: "fhevm-core-contracts/artifacts/contracts/KMSVerifier.sol/KMSVerifier.json",
-      [TFHEEXECUTOR_ADDRESS]: "fhevm-core-contracts/artifacts/contracts/TFHEExecutorWithEvents.sol/TFHEExecutorWithEvents.json",
-    }).map(([ address, path ]) => import(path).then(({ abi, deployedBytecode }) => setCode(address, deployedBytecode).then(() => hre.ethers.getContractAt(abi, address)))));
+    const [, , gateway, input, kms] = await Promise.all(
+      Object.entries({
+        [ACL_ADDRESS]: "fhevm-core-contracts/artifacts/contracts/ACL.sol/ACL.json",
+        [FHEPAYMENT_ADDRESS]: "fhevm-core-contracts/artifacts/contracts/FHEPayment.sol/FHEPayment.json",
+        [GATEWAYCONTRACT_ADDRESS]: "fhevm-core-contracts/artifacts/gateway/GatewayContract.sol/GatewayContract.json",
+        [INPUTVERIFIER_ADDRESS]:
+          "fhevm-core-contracts/artifacts/contracts/InputVerifier.coprocessor.sol/InputVerifier.json",
+        [KMSVERIFIER_ADDRESS]: "fhevm-core-contracts/artifacts/contracts/KMSVerifier.sol/KMSVerifier.json",
+        [TFHEEXECUTOR_ADDRESS]:
+          "fhevm-core-contracts/artifacts/contracts/TFHEExecutorWithEvents.sol/TFHEExecutorWithEvents.json",
+      }).map(([address, path]) =>
+        import(path).then(({ abi, deployedBytecode }) =>
+          setCode(address, deployedBytecode).then(() => hre.ethers.getContractAt(abi, address)),
+        ),
+      ),
+    );
 
     await Promise.all([
       kms.connect(zeroSigner).initialize(oneSigner.address),
