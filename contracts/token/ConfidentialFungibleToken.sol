@@ -158,7 +158,7 @@ abstract contract ConfidentialFungibleToken is IConfidentialFungibleToken {
         } else {
             (result, ptr) = tryDecrease(_balances[from], amount);
             ptr.allowThis();
-            ptr.allow(to);
+            ptr.allow(from);
             _balances[from] = ptr;
         }
 
