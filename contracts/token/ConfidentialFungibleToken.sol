@@ -144,17 +144,17 @@ abstract contract ConfidentialFungibleToken {
         return _update(from, address(0), amount);
     }
 
-    function _publicMint(address to, uint80 amount) internal returns (ebool result) {
+    function _publicMint(address to, uint64 amount) internal returns (ebool result) {
         result = _mint(to, amount.asEuint64());
         // TODO: callback for public event
     }
 
-    function _publicTransfer(address from, address to, uint80 amount) internal returns (ebool result) {
+    function _publicTransfer(address from, address to, uint64 amount) internal returns (ebool result) {
         result = _transfer(from, to, amount.asEuint64());
         // TODO: callback for public event
     }
 
-    function _publicBurn(address from, uint80 amount) internal returns (ebool result) {
+    function _publicBurn(address from, uint64 amount) internal returns (ebool result) {
         result = _burn(from, amount.asEuint64());
         // TODO: callback for public event
     }
