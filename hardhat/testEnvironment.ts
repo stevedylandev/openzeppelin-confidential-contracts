@@ -9,13 +9,13 @@ export const GATEWAYCONTRACT_ADDRESS = "0x33347831500f1e73f0cccbb95c9f86b94d7b11
 export const INPUTVERIFIER_ADDRESS = "0x3a2DA6f1daE9eF988B48d9CF27523FA31a8eBE50";
 export const KMSVERIFIER_ADDRESS = "0x9d6891a6240d6130c54ae243d8005063d05fe14b";
 export const TFHEEXECUTOR_ADDRESS = "0x687408ab54661ba0b4aef3a44156c616c6955e07";
-export const PRIVATE_KEY_KMS_SIGNER = "0x388b7680e4e1afa06efbfd45cdd1fe39f3c6af381df6555a19661f283b97de91";
+export const KMSSIGNER_PK = "0x388b7680e4e1afa06efbfd45cdd1fe39f3c6af381df6555a19661f283b97de91";
 
 task("test", async (_taskArgs, hre, runSuper) => {
   if (hre.network.name === "hardhat") {
     const zeroSigner = await impersonate(hre, "0x0000000000000000000000000000000000000000");
     const oneSigner = await impersonate(hre, "0x0000000000000000000000000000000000000001");
-    const kmsSigner = new ethers.Wallet(PRIVATE_KEY_KMS_SIGNER);
+    const kmsSigner = new ethers.Wallet(KMSSIGNER_PK);
 
     const [,,gateway,input,kms,] = await Promise.all(Object.entries({
       [ACL_ADDRESS]: "fhevm-core-contracts/artifacts/contracts/ACL.sol/ACL.json",
