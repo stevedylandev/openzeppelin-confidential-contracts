@@ -8,6 +8,17 @@ interface IConfidentialFungibleTokenReceiver {
     function onConfidentialTransferReceived(address operator, address from, euint64 value, bytes calldata data) external returns (ebool);
 }
 
+function tryIncrease(euint64 oldValue, euint64 delta) returns (ebool success, euint64 updated) {
+    euint64 newValue = TFHE.add(oldValue, delta);
+    success = TFHE.ge(newValue, oldValue);
+    updated = TFHE.select(success, newValue, oldValue);
+}
+
+function tryDecrease(euint64 oldValue, euint64 delta) returns (ebool success, euint64 updated) {
+    success = TFHE.ge(oldValue, delta);
+    updated = TFHE.select(success, TFHE.sub(oldValue, delta), oldValue);
+}
+
 abstract contract ConfidentialFungibleToken {
     using TFHE for *;
 
@@ -134,31 +145,31 @@ abstract contract ConfidentialFungibleToken {
     }
 
     function _update(address from, address to, euint64 amount) internal virtual returns (ebool result) {
-        result = from == address(0)
-            ? true.asEbool() // TODO: consider totalSupply overflow as a failure case when minting
-            : _balances[from].ge(amount);
-
-        amount = result.select(amount, 0.asEuint64());
+        euint64 ptr;
 
         if (from == address(0)) {
-            euint64 ptr = _totalSupply = _totalSupply.add(amount);
+            (result, ptr) = tryIncrease(_totalSupply, amount);
+            _totalSupply = ptr;
             ptr.allowThis();
         } else {
-            euint64 ptr = _balances[from] = _balances[from].sub(amount);
+            (result, ptr) = tryDecrease(_balances[from], amount);
+            _balances[from] = ptr;
             ptr.allowThis();
             ptr.allow(to);
         }
+
+        euint64 transferred = result.select(amount, 0.asEuint64());
 
         if (to == address(0)) {
-            euint64 ptr = _totalSupply = _totalSupply.sub(amount);
+            ptr = _totalSupply = _totalSupply.sub(transferred);
             ptr.allowThis();
         } else {
-            euint64 ptr = _balances[to] = _balances[to].add(amount);
+            ptr = _balances[to] = _balances[to].add(transferred);
             ptr.allowThis();
             ptr.allow(to);
         }
 
-        emit ConfidentialTransfer(from, to, amount);
+        emit ConfidentialTransfer(from, to, transferred);
     }
 
     function _checkOnERC1363TransferReceived(
