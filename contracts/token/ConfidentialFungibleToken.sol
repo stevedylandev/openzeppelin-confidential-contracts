@@ -2,24 +2,24 @@
 
 pragma solidity ^0.8.24;
 
-import { TFHE, ebool, euint256 } from "fhevm/lib/TFHE.sol";
+import { TFHE, ebool, euint64 } from "fhevm/lib/TFHE.sol";
 
 interface IConfidentialFungibleTokenReceiver {
-    function onConfidentialTransferReceived(address operator, address from, euint256 value, bytes calldata data) external returns (ebool);
+    function onConfidentialTransferReceived(address operator, address from, euint64 value, bytes calldata data) external returns (ebool);
 }
 
 abstract contract ConfidentialFungibleToken {
     using TFHE for *;
 
-    mapping(address holder => euint256) private _balances;
+    mapping(address holder => euint64) private _balances;
     mapping(address holder => mapping(address spender => uint48)) private _operators;
-    euint256 private _totalSupply;
+    euint64 private _totalSupply;
     string private _name;
     string private _symbol;
     string private _tokenURI;
 
     event OperatorSet(address indexed holder, address indexed operator, uint48 until);
-    event ConfidentialTransfer(address indexed from, address indexed to, euint256 amount);
+    event ConfidentialTransfer(address indexed from, address indexed to, euint64 amount);
 
     error InvalidReceiver(address receiver);
     error InvalidSender(address sender);
@@ -47,11 +47,11 @@ abstract contract ConfidentialFungibleToken {
         return _tokenURI;
     }
 
-    function totalSupply() public view virtual returns (euint256) {
+    function totalSupply() public view virtual returns (euint64) {
         return _totalSupply;
     }
 
-    function balanceOf(address account) public view virtual returns (euint256) {
+    function balanceOf(address account) public view virtual returns (euint64) {
         return _balances[account];
     }
 
@@ -63,23 +63,23 @@ abstract contract ConfidentialFungibleToken {
         _setOperator(msg.sender, operator, until);
     }
 
-    function transfer(address to, euint256 amount) public virtual returns (euint256 result) {
+    function transfer(address to, euint64 amount) public virtual returns (ebool result) {
         result = _transfer(msg.sender, to, amount);
         result.allowTransient(msg.sender);
     }
 
-    function transferFrom(address from, address to, euint256 amount) public virtual returns (euint256 result) {
+    function transferFrom(address from, address to, euint64 amount) public virtual returns (ebool result) {
         require(isOperator(from, msg.sender), UnauthorizedSpender(from, msg.sender));
         result = _transfer(from, to, amount);
         result.allowTransient(msg.sender);
     }
 
-    function transferAndCall(address to, euint256 amount, bytes calldata data) public virtual returns (euint256 result) {
+    function transferAndCall(address to, euint64 amount, bytes calldata data) public virtual returns (ebool result) {
         result = _transferAndCall(msg.sender, to, amount, data);
         result.allowTransient(msg.sender);
     }
 
-    function transferFromAndCall(address from, address to, euint256 amount, bytes calldata data) public virtual returns (euint256 result) {
+    function transferFromAndCall(address from, address to, euint64 amount, bytes calldata data) public virtual returns (ebool result) {
         require(isOperator(from, msg.sender), UnauthorizedSpender(from, msg.sender));
         result = _transferAndCall(from, to, amount, data);
         result.allowTransient(msg.sender);
@@ -90,84 +90,82 @@ abstract contract ConfidentialFungibleToken {
         emit OperatorSet(holder, operator, until);
     }
 
-    function _mint(address to, euint256 amount) internal returns (euint256 result) {
+    function _mint(address to, euint64 amount) internal returns (ebool result) {
         require(to != address(0), InvalidReceiver(address(0)));
         return _update(address(0), to, amount);
     }
 
-    function _transfer(address from, address to, euint256 amount) internal returns (euint256 result) {
+    function _transfer(address from, address to, euint64 amount) internal returns (ebool result) {
         require(from != address(0), InvalidSender(address(0)));
         require(to != address(0), InvalidReceiver(address(0)));
         return _update(from, to, amount);
     }
 
-    function _transferAndCall(address from, address to, euint256 amount, bytes calldata data) internal returns (euint256 result) {
+    function _transferAndCall(address from, address to, euint64 amount, bytes calldata data) internal returns (ebool result) {
         // Try to transfer amount + replace input with actually transferred amount.
-        amount = _transfer(from, to, amount);
-        amount.allowTransient(to);
+        euint64 transferred = _transfer(from, to, amount).select(amount, 0.asEuint64());
+        transferred.allowTransient(to);
 
         // Perform callback
-        result = _checkOnERC1363TransferReceived(msg.sender, from, to, amount, data)
-            .select(amount, 0.asEuint256());
+        result = _checkOnERC1363TransferReceived(msg.sender, from, to, transferred, data);
 
         // Refund if success fails. refund should never fail
-        _update(to, from, amount.sub(result));
+        _update(to, from, result.select(0.asEuint64(), transferred));
     }
 
-    function _burn(address from, euint256 amount) internal returns (euint256 result) {
+    function _burn(address from, euint64 amount) internal returns (ebool result) {
         require(from != address(0), InvalidSender(address(0)));
         return _update(from, address(0), amount);
     }
 
-    function _publicMint(address to, uint80 amount) internal returns (euint256 result) {
-        result = _mint(to, amount.asEuint256());
+    function _publicMint(address to, uint80 amount) internal returns (ebool result) {
+        result = _mint(to, amount.asEuint64());
         // TODO: callback for public event
     }
 
-    function _publicTransfer(address from, address to, uint80 amount) internal returns (euint256 result) {
-        result = _transfer(from, to, amount.asEuint256());
+    function _publicTransfer(address from, address to, uint80 amount) internal returns (ebool result) {
+        result = _transfer(from, to, amount.asEuint64());
         // TODO: callback for public event
     }
 
-    function _publicBurn(address from, uint80 amount) internal returns (euint256 result) {
-        result = _burn(from, amount.asEuint256());
+    function _publicBurn(address from, uint80 amount) internal returns (ebool result) {
+        result = _burn(from, amount.asEuint64());
         // TODO: callback for public event
     }
 
-    function _update(address from, address to, euint256 amount) internal virtual returns (euint256 result) {
-        // TODO: consider totalSupply overflow as a failure case when minting
-        result = (
-            from == address(0)
-                ? true.asEbool()
-                : _balances[from].ge(amount)
-        ).select(amount, 0.asEuint256());
+    function _update(address from, address to, euint64 amount) internal virtual returns (ebool result) {
+        result = from == address(0)
+            ? true.asEbool() // TODO: consider totalSupply overflow as a failure case when minting
+            : _balances[from].ge(amount);
+
+        amount = result.select(amount, 0.asEuint64());
 
         if (from == address(0)) {
-            euint256 ptr = _totalSupply = _totalSupply.add(result);
+            euint64 ptr = _totalSupply = _totalSupply.add(amount);
             ptr.allowThis();
         } else {
-            euint256 ptr = _balances[from] = _balances[from].sub(result);
+            euint64 ptr = _balances[from] = _balances[from].sub(amount);
             ptr.allowThis();
             ptr.allow(to);
         }
 
         if (to == address(0)) {
-            euint256 ptr = _totalSupply = _totalSupply.sub(result);
+            euint64 ptr = _totalSupply = _totalSupply.sub(amount);
             ptr.allowThis();
         } else {
-            euint256 ptr = _balances[to] = _balances[to].add(result);
+            euint64 ptr = _balances[to] = _balances[to].add(amount);
             ptr.allowThis();
             ptr.allow(to);
         }
 
-        emit ConfidentialTransfer(from, to, result);
+        emit ConfidentialTransfer(from, to, amount);
     }
 
     function _checkOnERC1363TransferReceived(
         address operator,
         address from,
         address to,
-        euint256 value,
+        euint64 value,
         bytes calldata data
     ) private returns (ebool) {
         if (to.code.length > 0) {
