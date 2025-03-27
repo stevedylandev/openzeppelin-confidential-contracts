@@ -186,6 +186,8 @@ abstract contract ConfidentialFungibleToken {
             _balances[to] = ptr;
         }
 
+        if (from != address(0)) transferred.allow(from);
+        if (to != address(0)) transferred.allow(to);
         emit ConfidentialTransfer(from, to, transferred);
     }
 
