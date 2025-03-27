@@ -2,9 +2,9 @@ import { Wallet, ZeroAddress } from "ethers";
 import gatewayArtifact from "fhevm-core-contracts/artifacts/gateway/GatewayContract.sol/GatewayContract.json";
 import { ethers, network } from "hardhat";
 
+import { impersonate } from "../helpers/accounts";
 import { ACL_ADDRESS, GATEWAYCONTRACT_ADDRESS, KMSVERIFIER_ADDRESS, PRIVATE_KEY_KMS_SIGNER } from "./constants";
 import { awaitCoprocessor, getClearText } from "./coprocessorUtils";
-import { impersonate } from "../helpers/accounts";
 import { waitNBlocks } from "./utils";
 
 const networkName = network.name;

@@ -16,6 +16,7 @@
     "lint:js:fix": "prettier --log-level warn --ignore-path .gitignore '**/*.{js,ts}' --write && eslint . --fix",
     "lint:sol": "prettier --log-level warn --ignore-path .gitignore '{contracts,test}/**/*.sol' --check && solhint '{contracts,test}/**/*.sol'",
     "lint:sol:fix": "prettier --log-level warn --ignore-path .gitignore '{contracts,test}/**/*.sol' --write",
+    "prepare": "husky",
     "test": "hardhat test",
     "test:coverage": "hardhat coverage"
   },
@@ -65,6 +66,8 @@
     "hardhat-gas-reporter": "^1.0.9",
     "hardhat-ignore-warnings": "^0.2.11",
     "hardhat-preprocessor": "^0.1.5",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.2.10",
     "lodash": "^4.17.21",
     "mocha": "^10.1.0",
     "prettier": "^2.8.4",
@@ -84,5 +87,15 @@
   },
   "engines": {
     "node": ">=20.0.0"
+  },
+  "lint-staged": {
+    "*.{js,ts}": [
+      "prettier --log-level warn --ignore-path .gitignore --check",
+      "eslint"
+    ],
+    "*.sol": [
+      "prettier --log-level warn --ignore-path .gitignore --check",
+      "solhint"
+    ]
   }
 }

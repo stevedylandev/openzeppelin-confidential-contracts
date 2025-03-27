@@ -3,15 +3,7 @@
 pragma solidity ^0.8.24;
 
 import { TFHE, ebool, euint64 } from "fhevm/lib/TFHE.sol";
-
-interface IConfidentialFungibleTokenReceiver {
-    function onConfidentialTransferReceived(
-        address operator,
-        address from,
-        euint64 value,
-        bytes calldata data
-    ) external returns (ebool);
-}
+import { IConfidentialFungibleToken, IConfidentialFungibleTokenReceiver } from "./IConfidentialFungibleToken.sol";
 
 function tryIncrease(euint64 oldValue, euint64 delta) returns (ebool success, euint64 updated) {
     euint64 newValue = TFHE.add(oldValue, delta);
@@ -24,7 +16,7 @@ function tryDecrease(euint64 oldValue, euint64 delta) returns (ebool success, eu
     updated = TFHE.select(success, TFHE.sub(oldValue, delta), oldValue);
 }
 
-abstract contract ConfidentialFungibleToken {
+abstract contract ConfidentialFungibleToken is IConfidentialFungibleToken {
     using TFHE for *;
 
     mapping(address holder => euint64) private _balances;
@@ -33,9 +25,6 @@ abstract contract ConfidentialFungibleToken {
     string private _name;
     string private _symbol;
     string private _tokenURI;
-
-    event OperatorSet(address indexed holder, address indexed operator, uint48 until);
-    event ConfidentialTransfer(address indexed from, address indexed to, euint64 amount);
 
     error InvalidReceiver(address receiver);
     error InvalidSender(address sender);
@@ -191,6 +180,7 @@ abstract contract ConfidentialFungibleToken {
         emit ConfidentialTransfer(from, to, transferred);
     }
 
+    // TODO: move to utils library ?
     function _checkOnERC1363TransferReceived(
         address operator,
         address from,
