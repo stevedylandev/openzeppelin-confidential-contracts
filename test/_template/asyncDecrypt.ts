@@ -4,7 +4,7 @@ import { ethers, network } from "hardhat";
 
 import { ACL_ADDRESS, GATEWAYCONTRACT_ADDRESS, KMSVERIFIER_ADDRESS, PRIVATE_KEY_KMS_SIGNER } from "./constants";
 import { awaitCoprocessor, getClearText } from "./coprocessorUtils";
-import { impersonate } from "./helpers/accounts";
+import { impersonate } from "../helpers/accounts";
 import { waitNBlocks } from "./utils";
 
 const networkName = network.name;

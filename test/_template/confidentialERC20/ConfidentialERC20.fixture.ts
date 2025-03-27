@@ -1,6 +1,6 @@
 import { ethers } from "hardhat";
 
-import type { MyConfidentialERC20 } from "../../types";
+import type { MyConfidentialERC20 } from "../../../types";
 import { getSigners } from "../signers";
 
 export async function deployConfidentialERC20Fixture(): Promise<MyConfidentialERC20> {
