@@ -16,15 +16,32 @@ interface IConfidentialFungibleToken {
     function balanceOf(address account) external view returns (euint64);
     function isOperator(address holder, address spender) external view returns (bool);
     function setOperator(address operator, uint48 until) external;
-    function transfer(address to, euint64 amount) external returns (ebool result);
-    function transferFrom(address from, address to, euint64 amount) external returns (ebool result);
-    function transferAndCall(address to, euint64 amount, bytes calldata data) external returns (ebool result);
-    function transferFromAndCall(
+    function confidentialTransfer(address to, euint64 amount) external returns (euint64 transferred);
+    function confidentialTransferFrom(address from, address to, euint64 amount) external returns (euint64 transferred);
+    function confidentialTransferAndCall(
+        address to,
+        euint64 amount,
+        bytes calldata data
+    ) external returns (euint64 transferred);
+    function confidentialTransferFromAndCall(
         address from,
         address to,
         euint64 amount,
         bytes calldata data
-    ) external returns (ebool result);
+    ) external returns (euint64 transferred);
+    function publicTransfer(address to, uint64 amount) external returns (euint64 transferred);
+    function publicTransferFrom(address from, address to, uint64 amount) external returns (euint64 transferred);
+    function publicTransferAndCall(
+        address to,
+        uint64 amount,
+        bytes calldata data
+    ) external returns (euint64 transferred);
+    function publicTransferFromAndCall(
+        address from,
+        address to,
+        uint64 amount,
+        bytes calldata data
+    ) external returns (euint64 transferred);
 }
 
 interface IConfidentialFungibleTokenReceiver {

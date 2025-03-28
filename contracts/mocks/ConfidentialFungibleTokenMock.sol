@@ -17,11 +17,11 @@ contract ConfidentialFungibleTokenMock is ConfidentialFungibleToken {
         return _setOperator(holder, operator, until);
     }
 
-    function $_mint(address to, euint64 amount) public returns (ebool result) {
+    function $_mint(address to, euint64 amount) public returns (euint64 transferred) {
         return _mint(to, amount);
     }
 
-    function $_transfer(address from, address to, euint64 amount) public returns (ebool result) {
+    function $_transfer(address from, address to, euint64 amount) public returns (euint64 transferred) {
         return _transfer(from, to, amount);
     }
 
@@ -30,27 +30,15 @@ contract ConfidentialFungibleTokenMock is ConfidentialFungibleToken {
         address to,
         euint64 amount,
         bytes calldata data
-    ) public returns (ebool result) {
+    ) public returns (euint64 transferred) {
         return _transferAndCall(from, to, amount, data);
     }
 
-    function $_burn(address from, euint64 amount) public returns (ebool result) {
+    function $_burn(address from, euint64 amount) public returns (euint64 transferred) {
         return _burn(from, amount);
     }
 
-    function $_publicMint(address to, uint64 amount) public returns (ebool result) {
-        return _publicMint(to, amount);
-    }
-
-    function $_publicTransfer(address from, address to, uint64 amount) public returns (ebool result) {
-        return _publicTransfer(from, to, amount);
-    }
-
-    function $_publicBurn(address from, uint64 amount) public returns (ebool result) {
-        return _publicBurn(from, amount);
-    }
-
-    function $_update(address from, address to, euint64 amount) public virtual returns (ebool result) {
+    function $_update(address from, address to, euint64 amount) public virtual returns (euint64 transferred) {
         return _update(from, to, amount);
     }
 }

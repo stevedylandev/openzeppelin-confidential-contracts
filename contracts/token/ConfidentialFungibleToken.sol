@@ -68,31 +68,74 @@ abstract contract ConfidentialFungibleToken is IConfidentialFungibleToken {
         _setOperator(msg.sender, operator, until);
     }
 
-    function transfer(address to, euint64 amount) public virtual returns (ebool result) {
-        result = _transfer(msg.sender, to, amount);
-        result.allowTransient(msg.sender);
+    function confidentialTransfer(address to, euint64 amount) public virtual returns (euint64 transferred) {
+        transferred = _transfer(msg.sender, to, amount);
+        transferred.allowTransient(msg.sender);
     }
 
-    function transferFrom(address from, address to, euint64 amount) public virtual returns (ebool result) {
+    function confidentialTransferFrom(
+        address from,
+        address to,
+        euint64 amount
+    ) public virtual returns (euint64 transferred) {
         require(isOperator(from, msg.sender), UnauthorizedSpender(from, msg.sender));
-        result = _transfer(from, to, amount);
-        result.allowTransient(msg.sender);
+        transferred = _transfer(from, to, amount);
+        transferred.allowTransient(msg.sender);
     }
 
-    function transferAndCall(address to, euint64 amount, bytes calldata data) public virtual returns (ebool result) {
-        result = _transferAndCall(msg.sender, to, amount, data);
-        result.allowTransient(msg.sender);
+    function confidentialTransferAndCall(
+        address to,
+        euint64 amount,
+        bytes calldata data
+    ) public virtual returns (euint64 transferred) {
+        transferred = _transferAndCall(msg.sender, to, amount, data);
+        transferred.allowTransient(msg.sender);
     }
 
-    function transferFromAndCall(
+    function confidentialTransferFromAndCall(
         address from,
         address to,
         euint64 amount,
         bytes calldata data
-    ) public virtual returns (ebool result) {
+    ) public virtual returns (euint64 transferred) {
         require(isOperator(from, msg.sender), UnauthorizedSpender(from, msg.sender));
-        result = _transferAndCall(from, to, amount, data);
-        result.allowTransient(msg.sender);
+        transferred = _transferAndCall(from, to, amount, data);
+        transferred.allowTransient(msg.sender);
+    }
+
+    function publicTransfer(address to, uint64 amount) public virtual returns (euint64 transferred) {
+        transferred = _transfer(msg.sender, to, amount.asEuint64());
+        transferred.allowTransient(msg.sender);
+        _discloseTransfer(msg.sender, to, transferred);
+    }
+
+    function publicTransferFrom(address from, address to, uint64 amount) public virtual returns (euint64 transferred) {
+        require(isOperator(from, msg.sender), UnauthorizedSpender(from, msg.sender));
+        transferred = _transfer(from, to, amount.asEuint64());
+        transferred.allowTransient(msg.sender);
+        _discloseTransfer(from, to, transferred);
+    }
+
+    function publicTransferAndCall(
+        address to,
+        uint64 amount,
+        bytes calldata data
+    ) public virtual returns (euint64 transferred) {
+        transferred = _transferAndCall(msg.sender, to, amount.asEuint64(), data);
+        transferred.allowTransient(msg.sender);
+        _discloseTransfer(msg.sender, to, transferred);
+    }
+
+    function publicTransferFromAndCall(
+        address from,
+        address to,
+        uint64 amount,
+        bytes calldata data
+    ) public virtual returns (euint64 transferred) {
+        require(isOperator(from, msg.sender), UnauthorizedSpender(from, msg.sender));
+        transferred = _transferAndCall(from, to, amount.asEuint64(), data);
+        transferred.allowTransient(msg.sender);
+        _discloseTransfer(from, to, transferred);
     }
 
     function _setOperator(address holder, address operator, uint48 until) internal virtual {
@@ -100,12 +143,17 @@ abstract contract ConfidentialFungibleToken is IConfidentialFungibleToken {
         emit OperatorSet(holder, operator, until);
     }
 
-    function _mint(address to, euint64 amount) internal returns (ebool result) {
+    function _mint(address to, euint64 amount) internal returns (euint64 transferred) {
         require(to != address(0), InvalidReceiver(address(0)));
         return _update(address(0), to, amount);
     }
 
-    function _transfer(address from, address to, euint64 amount) internal returns (ebool result) {
+    function _burn(address from, euint64 amount) internal returns (euint64 transferred) {
+        require(from != address(0), InvalidSender(address(0)));
+        return _update(from, address(0), amount);
+    }
+
+    function _transfer(address from, address to, euint64 amount) internal returns (euint64 transferred) {
         require(from != address(0), InvalidSender(address(0)));
         require(to != address(0), InvalidReceiver(address(0)));
         return _update(from, to, amount);
@@ -116,53 +164,34 @@ abstract contract ConfidentialFungibleToken is IConfidentialFungibleToken {
         address to,
         euint64 amount,
         bytes calldata data
-    ) internal returns (ebool result) {
+    ) internal returns (euint64 transferred) {
         // Try to transfer amount + replace input with actually transferred amount.
-        euint64 transferred = _transfer(from, to, amount).select(amount, 0.asEuint64());
-        transferred.allowTransient(to);
+        euint64 sent = _transfer(from, to, amount);
+        sent.allowTransient(to);
 
         // Perform callback
-        result = _checkOnERC1363TransferReceived(msg.sender, from, to, transferred, data);
+        transferred = _checkOnERC1363TransferReceived(msg.sender, from, to, sent, data).select(sent, 0.asEuint64());
 
         // Refund if success fails. refund should never fail
-        _update(to, from, result.select(0.asEuint64(), transferred));
+        _update(to, from, sent.sub(transferred));
     }
 
-    function _burn(address from, euint64 amount) internal returns (ebool result) {
-        require(from != address(0), InvalidSender(address(0)));
-        return _update(from, address(0), amount);
-    }
-
-    function _publicMint(address to, uint64 amount) internal returns (ebool result) {
-        result = _mint(to, amount.asEuint64());
-        // TODO: callback for public event
-    }
-
-    function _publicTransfer(address from, address to, uint64 amount) internal returns (ebool result) {
-        result = _transfer(from, to, amount.asEuint64());
-        // TODO: callback for public event
-    }
-
-    function _publicBurn(address from, uint64 amount) internal returns (ebool result) {
-        result = _burn(from, amount.asEuint64());
-        // TODO: callback for public event
-    }
-
-    function _update(address from, address to, euint64 amount) internal virtual returns (ebool result) {
+    function _update(address from, address to, euint64 amount) internal virtual returns (euint64 transferred) {
+        ebool success;
         euint64 ptr;
 
         if (from == address(0)) {
-            (result, ptr) = tryIncrease(_totalSupply, amount);
+            (success, ptr) = tryIncrease(_totalSupply, amount);
             ptr.allowThis();
             _totalSupply = ptr;
         } else {
-            (result, ptr) = tryDecrease(_balances[from], amount);
+            (success, ptr) = tryDecrease(_balances[from], amount);
             ptr.allowThis();
             ptr.allow(from);
             _balances[from] = ptr;
         }
 
-        euint64 transferred = result.select(amount, 0.asEuint64());
+        transferred = success.select(amount, 0.asEuint64());
 
         if (to == address(0)) {
             ptr = _totalSupply.sub(transferred);
@@ -205,5 +234,11 @@ abstract contract ConfidentialFungibleToken is IConfidentialFungibleToken {
         } else {
             return true.asEbool();
         }
+    }
+
+    function _discloseTransfer(address /*from*/, address /*to*/, euint64 /*amount*/) internal virtual {
+        // TODO: This function should request and async decoding of amount, and emit the corresponding public transfer
+        // event in the callback
+        revert("not implemented yet");
     }
 }
