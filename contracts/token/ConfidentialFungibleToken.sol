@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.24;
 
-import { TFHE, ebool, euint64 } from "fhevm/lib/TFHE.sol";
+import { TFHE, einput, ebool, euint64 } from "fhevm/lib/TFHE.sol";
 import { IConfidentialFungibleToken, IConfidentialFungibleTokenReceiver } from "./IConfidentialFungibleToken.sol";
 
 function tryIncrease(euint64 oldValue, euint64 delta) returns (ebool success, euint64 updated) {
@@ -68,9 +68,26 @@ abstract contract ConfidentialFungibleToken is IConfidentialFungibleToken {
         _setOperator(msg.sender, operator, until);
     }
 
+    function confidentialTransfer(
+        address to,
+        einput encryptedAmount,
+        bytes calldata inputProof
+    ) public virtual returns (euint64 transferred) {
+        return confidentialTransfer(to, encryptedAmount.asEuint64(inputProof));
+    }
+
     function confidentialTransfer(address to, euint64 amount) public virtual returns (euint64 transferred) {
         transferred = _transfer(msg.sender, to, amount);
         transferred.allowTransient(msg.sender);
+    }
+
+    function confidentialTransferFrom(
+        address from,
+        address to,
+        einput encryptedAmount,
+        bytes calldata inputProof
+    ) public virtual returns (euint64 transferred) {
+        return confidentialTransferFrom(from, to, encryptedAmount.asEuint64(inputProof));
     }
 
     function confidentialTransferFrom(
@@ -85,11 +102,30 @@ abstract contract ConfidentialFungibleToken is IConfidentialFungibleToken {
 
     function confidentialTransferAndCall(
         address to,
+        einput encryptedAmount,
+        bytes calldata inputProof,
+        bytes calldata data
+    ) public virtual returns (euint64 transferred) {
+        return confidentialTransferAndCall(to, encryptedAmount.asEuint64(inputProof), data);
+    }
+
+    function confidentialTransferAndCall(
+        address to,
         euint64 amount,
         bytes calldata data
     ) public virtual returns (euint64 transferred) {
         transferred = _transferAndCall(msg.sender, to, amount, data);
         transferred.allowTransient(msg.sender);
+    }
+
+    function confidentialTransferFromAndCall(
+        address from,
+        address to,
+        einput encryptedAmount,
+        bytes calldata inputProof,
+        bytes calldata data
+    ) public virtual returns (euint64 transferred) {
+        return confidentialTransferFromAndCall(from, to, encryptedAmount.asEuint64(inputProof), data);
     }
 
     function confidentialTransferFromAndCall(
@@ -237,8 +273,7 @@ abstract contract ConfidentialFungibleToken is IConfidentialFungibleToken {
     }
 
     function _discloseTransfer(address /*from*/, address /*to*/, euint64 /*amount*/) internal virtual {
-        // TODO: This function should request and async decoding of amount, and emit the corresponding public transfer
-        // event in the callback
+        // TODO: how do we do that ?
         revert("not implemented yet");
     }
 }

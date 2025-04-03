@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.24;
 
-import { ebool, euint64 } from "fhevm/lib/TFHE.sol";
+import { ebool, einput, euint64 } from "fhevm/lib/TFHE.sol";
 
 interface IConfidentialFungibleToken {
     event OperatorSet(address indexed holder, address indexed operator, uint48 until);
@@ -16,11 +16,35 @@ interface IConfidentialFungibleToken {
     function balanceOf(address account) external view returns (euint64);
     function isOperator(address holder, address spender) external view returns (bool);
     function setOperator(address operator, uint48 until) external;
+    function confidentialTransfer(
+        address to,
+        einput encryptedAmount,
+        bytes calldata inputProof
+    ) external returns (euint64 transferred);
     function confidentialTransfer(address to, euint64 amount) external returns (euint64 transferred);
+    function confidentialTransferFrom(
+        address from,
+        address to,
+        einput encryptedAmount,
+        bytes calldata inputProof
+    ) external returns (euint64 transferred);
     function confidentialTransferFrom(address from, address to, euint64 amount) external returns (euint64 transferred);
     function confidentialTransferAndCall(
         address to,
+        einput encryptedAmount,
+        bytes calldata inputProof,
+        bytes calldata data
+    ) external returns (euint64 transferred);
+    function confidentialTransferAndCall(
+        address to,
         euint64 amount,
+        bytes calldata data
+    ) external returns (euint64 transferred);
+    function confidentialTransferFromAndCall(
+        address from,
+        address to,
+        einput encryptedAmount,
+        bytes calldata inputProof,
         bytes calldata data
     ) external returns (euint64 transferred);
     function confidentialTransferFromAndCall(
