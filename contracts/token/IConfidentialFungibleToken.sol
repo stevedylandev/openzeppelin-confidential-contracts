@@ -53,19 +53,6 @@ interface IConfidentialFungibleToken {
         euint64 amount,
         bytes calldata data
     ) external returns (euint64 transferred);
-    function publicTransfer(address to, uint64 amount) external returns (euint64 transferred);
-    function publicTransferFrom(address from, address to, uint64 amount) external returns (euint64 transferred);
-    function publicTransferAndCall(
-        address to,
-        uint64 amount,
-        bytes calldata data
-    ) external returns (euint64 transferred);
-    function publicTransferFromAndCall(
-        address from,
-        address to,
-        uint64 amount,
-        bytes calldata data
-    ) external returns (euint64 transferred);
 }
 
 interface IConfidentialFungibleTokenReceiver {

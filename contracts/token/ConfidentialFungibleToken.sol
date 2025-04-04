@@ -139,39 +139,15 @@ abstract contract ConfidentialFungibleToken is IConfidentialFungibleToken {
         transferred.allowTransient(msg.sender);
     }
 
-    function publicTransfer(address to, uint64 amount) public virtual returns (euint64 transferred) {
-        transferred = _transfer(msg.sender, to, amount.asEuint64());
-        transferred.allowTransient(msg.sender);
-        _discloseTransfer(msg.sender, to, transferred);
-    }
-
-    function publicTransferFrom(address from, address to, uint64 amount) public virtual returns (euint64 transferred) {
-        require(isOperator(from, msg.sender), UnauthorizedSpender(from, msg.sender));
-        transferred = _transfer(from, to, amount.asEuint64());
-        transferred.allowTransient(msg.sender);
-        _discloseTransfer(from, to, transferred);
-    }
-
-    function publicTransferAndCall(
-        address to,
-        uint64 amount,
-        bytes calldata data
-    ) public virtual returns (euint64 transferred) {
-        transferred = _transferAndCall(msg.sender, to, amount.asEuint64(), data);
-        transferred.allowTransient(msg.sender);
-        _discloseTransfer(msg.sender, to, transferred);
-    }
-
-    function publicTransferFromAndCall(
-        address from,
-        address to,
-        uint64 amount,
-        bytes calldata data
-    ) public virtual returns (euint64 transferred) {
-        require(isOperator(from, msg.sender), UnauthorizedSpender(from, msg.sender));
-        transferred = _transferAndCall(from, to, amount.asEuint64(), data);
-        transferred.allowTransient(msg.sender);
-        _discloseTransfer(from, to, transferred);
+    function discloseTransfer(
+        address /*from*/,
+        address /*to*/,
+        euint64 /*amount*/,
+        uint64 /*decryptedAmount*/,
+        bytes calldata /*decryptedProof*/,
+        bytes calldata /*inclusionProof*/
+    ) public virtual {
+        revert("not implemented yet");
     }
 
     function _setOperator(address holder, address operator, uint48 until) internal virtual {
@@ -270,10 +246,5 @@ abstract contract ConfidentialFungibleToken is IConfidentialFungibleToken {
         } else {
             return true.asEbool();
         }
-    }
-
-    function _discloseTransfer(address /*from*/, address /*to*/, euint64 /*amount*/) internal virtual {
-        // TODO: how do we do that ?
-        revert("not implemented yet");
     }
 }
