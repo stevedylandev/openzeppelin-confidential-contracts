@@ -45,7 +45,7 @@ abstract contract ConfidentialFungibleToken is IConfidentialFungibleToken {
     }
 
     function decimals() public view virtual returns (uint8) {
-        return 18;
+        return 9;
     }
 
     function tokenURI() public view virtual returns (string memory) {
