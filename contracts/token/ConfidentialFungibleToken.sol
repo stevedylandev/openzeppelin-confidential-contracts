@@ -29,6 +29,7 @@ abstract contract ConfidentialFungibleToken is IConfidentialFungibleToken {
     error InvalidReceiver(address receiver);
     error InvalidSender(address sender);
     error UnauthorizedSpender(address holder, address spender);
+    error UnauthorizedUseOfEncryptedValue(euint amount, address user);
 
     constructor(string memory name_, string memory symbol_, string memory tokenURI_) {
         _name = name_;
@@ -77,6 +78,7 @@ abstract contract ConfidentialFungibleToken is IConfidentialFungibleToken {
     }
 
     function confidentialTransfer(address to, euint64 amount) public virtual returns (euint64 transferred) {
+        require(amount.isAllowed(msg.sender), UnauthorizedUseOfEncryptedValue(amount, msg.sender));
         transferred = _transfer(msg.sender, to, amount);
         transferred.allowTransient(msg.sender);
     }
@@ -95,6 +97,7 @@ abstract contract ConfidentialFungibleToken is IConfidentialFungibleToken {
         address to,
         euint64 amount
     ) public virtual returns (euint64 transferred) {
+        require(amount.isAllowed(msg.sender), UnauthorizedUseOfEncryptedValue(amount, msg.sender));
         require(isOperator(from, msg.sender), UnauthorizedSpender(from, msg.sender));
         transferred = _transfer(from, to, amount);
         transferred.allowTransient(msg.sender);
@@ -114,6 +117,7 @@ abstract contract ConfidentialFungibleToken is IConfidentialFungibleToken {
         euint64 amount,
         bytes calldata data
     ) public virtual returns (euint64 transferred) {
+        require(amount.isAllowed(msg.sender), UnauthorizedUseOfEncryptedValue(amount, msg.sender));
         transferred = _transferAndCall(msg.sender, to, amount, data);
         transferred.allowTransient(msg.sender);
     }
@@ -134,6 +138,7 @@ abstract contract ConfidentialFungibleToken is IConfidentialFungibleToken {
         euint64 amount,
         bytes calldata data
     ) public virtual returns (euint64 transferred) {
+        require(amount.isAllowed(msg.sender), UnauthorizedUseOfEncryptedValue(amount, msg.sender));
         require(isOperator(from, msg.sender), UnauthorizedSpender(from, msg.sender));
         transferred = _transferAndCall(from, to, amount, data);
         transferred.allowTransient(msg.sender);
