@@ -7,9 +7,8 @@ import { IConfidentialFungibleToken, IConfidentialFungibleTokenReceiver } from "
 
 function tryIncrease(euint64 oldValue, euint64 delta) returns (ebool success, euint64 updated) {
     if (euint64.unwrap(oldValue) == 0) {
-        // need reencrypting to avoid leaking the balance to whoever can read the transfer.
         success = TFHE.asEbool(true);
-        updated = TFHE.add(delta, TFHE.asEuint64(0));
+        updated = delta;
     } else {
         euint64 newValue = TFHE.add(oldValue, delta);
         success = TFHE.ge(newValue, oldValue);
