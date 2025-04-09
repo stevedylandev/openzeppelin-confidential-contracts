@@ -79,7 +79,8 @@ abstract contract ConfidentialFungibleToken is IConfidentialFungibleToken {
         einput encryptedAmount,
         bytes calldata inputProof
     ) public virtual returns (euint64 transferred) {
-        return confidentialTransfer(to, encryptedAmount.asEuint64(inputProof));
+        transferred = _transfer(msg.sender, to, encryptedAmount.asEuint64(inputProof));
+        transferred.allowTransient(msg.sender);
     }
 
     function confidentialTransfer(address to, euint64 amount) public virtual returns (euint64 transferred) {
@@ -94,7 +95,9 @@ abstract contract ConfidentialFungibleToken is IConfidentialFungibleToken {
         einput encryptedAmount,
         bytes calldata inputProof
     ) public virtual returns (euint64 transferred) {
-        return confidentialTransferFrom(from, to, encryptedAmount.asEuint64(inputProof));
+        require(isOperator(from, msg.sender), UnauthorizedSpender(from, msg.sender));
+        transferred = _transfer(from, to, encryptedAmount.asEuint64(inputProof));
+        transferred.allowTransient(msg.sender);
     }
 
     function confidentialTransferFrom(
@@ -114,7 +117,8 @@ abstract contract ConfidentialFungibleToken is IConfidentialFungibleToken {
         bytes calldata inputProof,
         bytes calldata data
     ) public virtual returns (euint64 transferred) {
-        return confidentialTransferAndCall(to, encryptedAmount.asEuint64(inputProof), data);
+        transferred = _transferAndCall(msg.sender, to, encryptedAmount.asEuint64(inputProof), data);
+        transferred.allowTransient(msg.sender);
     }
 
     function confidentialTransferAndCall(
@@ -134,7 +138,9 @@ abstract contract ConfidentialFungibleToken is IConfidentialFungibleToken {
         bytes calldata inputProof,
         bytes calldata data
     ) public virtual returns (euint64 transferred) {
-        return confidentialTransferFromAndCall(from, to, encryptedAmount.asEuint64(inputProof), data);
+        require(isOperator(from, msg.sender), UnauthorizedSpender(from, msg.sender));
+        transferred = _transferAndCall(from, to, encryptedAmount.asEuint64(inputProof), data);
+        transferred.allowTransient(msg.sender);
     }
 
     function confidentialTransferFromAndCall(
