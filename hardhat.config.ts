@@ -6,6 +6,7 @@ import "hardhat-gas-reporter";
 import "hardhat-ignore-warnings";
 import { HardhatUserConfig } from "hardhat/config";
 import "solidity-coverage";
+import "solidity-docgen";
 
 import "./hardhat/coverage";
 import "./hardhat/provider";
@@ -49,6 +50,7 @@ const config: HardhatUserConfig = {
     outDir: "types",
     target: "ethers-v6",
   },
+  docgen: require("./docs/config"),
 };
 
 export default config;
