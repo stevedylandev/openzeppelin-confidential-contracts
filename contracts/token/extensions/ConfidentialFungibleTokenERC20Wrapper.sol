@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.24;
+pragma solidity ^0.8.26;
 
 import { TFHE, einput, euint64 } from "fhevm/lib/TFHE.sol";
 import { Gateway } from "fhevm/gateway/lib/Gateway.sol";
@@ -18,9 +18,6 @@ import { ConfidentialFungibleToken } from "../ConfidentialFungibleToken.sol";
  * which allows users to transfer `ERC1363` tokens directly to the wrapper with a callback to wrap the tokens.
  */
 abstract contract ConfidentialFungibleTokenERC20Wrapper is ConfidentialFungibleToken, IERC1363Receiver {
-    using TFHE for *;
-    using SafeCast for *;
-
     IERC20 private immutable _underlying;
     uint8 private immutable _decimals;
     uint256 private immutable _rate;
@@ -39,16 +36,6 @@ abstract contract ConfidentialFungibleTokenERC20Wrapper is ConfidentialFungibleT
             _decimals = tokenDecimals;
             _rate = 1;
         }
-    }
-
-    function _tryGetAssetDecimals(IERC20 asset_) private view returns (uint8 assetDecimals) {
-        (bool success, bytes memory encodedDecimals) = address(asset_).staticcall(
-            abi.encodeCall(IERC20Metadata.decimals, ())
-        );
-        if (success && encodedDecimals.length >= 32) {
-            return abi.decode(encodedDecimals, (uint8));
-        }
-        return 18;
     }
 
     /// @inheritdoc ConfidentialFungibleToken
@@ -89,7 +76,7 @@ abstract contract ConfidentialFungibleTokenERC20Wrapper is ConfidentialFungibleT
 
         // mint confidential token
         address to = data.length < 20 ? from : address(bytes20(data));
-        _mint(to, (amount / rate()).toUint64().asEuint64());
+        _mint(to, TFHE.asEuint64(SafeCast.toUint64(amount / rate())));
 
         // return magic value
         return IERC1363Receiver.onTransferReceived.selector;
@@ -105,7 +92,7 @@ abstract contract ConfidentialFungibleTokenERC20Wrapper is ConfidentialFungibleT
         SafeERC20.safeTransferFrom(underlying(), msg.sender, address(this), amount - (amount % rate()));
 
         // mint confidential token
-        _mint(to, (amount / rate()).toUint64().asEuint64());
+        _mint(to, TFHE.asEuint64(SafeCast.toUint64(amount / rate())));
     }
 
     /**
@@ -118,7 +105,7 @@ abstract contract ConfidentialFungibleTokenERC20Wrapper is ConfidentialFungibleT
      */
     function unwrap(address from, address to, euint64 amount) public virtual {
         require(
-            amount.isAllowed(msg.sender),
+            TFHE.isAllowed(amount, msg.sender),
             ConfidentialFungibleTokenUnauthorizedUseOfEncryptedAmount(amount, msg.sender)
         );
         _unwrap(from, to, amount);
@@ -129,7 +116,19 @@ abstract contract ConfidentialFungibleTokenERC20Wrapper is ConfidentialFungibleT
      * in the ACL.
      */
     function unwrap(address from, address to, einput encryptedAmount, bytes calldata inputProof) public virtual {
-        _unwrap(from, to, encryptedAmount.asEuint64(inputProof));
+        _unwrap(from, to, TFHE.asEuint64(encryptedAmount, inputProof));
+    }
+
+    /**
+     * @dev Called by the fhEVM gateway with the decrypted amount `amount` for a request id `requestId`.
+     * Fills unwrap requests.
+     */
+    function finalizeUnwrap(uint256 requestID, uint64 amount) public virtual onlyGateway {
+        address to = _receivers[requestID];
+        require(to != address(0), ConfidentialFungibleTokenInvalidGatewayRequest(requestID));
+        delete _receivers[requestID];
+
+        SafeERC20.safeTransfer(underlying(), to, amount * rate());
     }
 
     function _unwrap(address from, address to, euint64 amount) internal virtual {
@@ -157,15 +156,13 @@ abstract contract ConfidentialFungibleTokenERC20Wrapper is ConfidentialFungibleT
         _receivers[requestID] = to;
     }
 
-    /**
-     * @dev Called by the fhEVM gateway with the decrypted amount `amount` for a request id `requestId`.
-     * Fills unwrap requests.
-     */
-    function finalizeUnwrap(uint256 requestID, uint64 amount) public virtual onlyGateway {
-        address to = _receivers[requestID];
-        require(to != address(0), ConfidentialFungibleTokenInvalidGatewayRequest(requestID));
-        delete _receivers[requestID];
-
-        SafeERC20.safeTransfer(underlying(), to, amount * rate());
+    function _tryGetAssetDecimals(IERC20 asset_) private view returns (uint8 assetDecimals) {
+        (bool success, bytes memory encodedDecimals) = address(asset_).staticcall(
+            abi.encodeCall(IERC20Metadata.decimals, ())
+        );
+        if (success && encodedDecimals.length == 32) {
+            return abi.decode(encodedDecimals, (uint8));
+        }
+        return 18;
     }
 }
