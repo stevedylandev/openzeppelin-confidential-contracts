@@ -4,7 +4,7 @@ import hre, { ethers } from "hardhat";
 import { awaitAllDecryptionResults, initGateway } from "../_template/asyncDecrypt";
 import { createInstance } from "../_template/instance";
 import { reencryptEuint64 } from "../_template/reencrypt";
-import { impersonate } from "../helpers/accounts";
+import { allowHandle, impersonate } from "../helpers/accounts";
 
 const name = "ConfidentialFungibleToken";
 const symbol = "CFT";
@@ -161,26 +161,54 @@ describe("ConfidentialFungibleToken", function () {
         });
 
         if (!asSender) {
-          it("without operator approval should fail", async function () {
-            await this.token.$_setOperator(this.holder, this.operator, 0);
+          for (const withCallback of [false, true]) {
+            describe(withCallback ? "with callback" : "without callback", function () {
+              let encryptedInput: any;
+              let params: any;
 
-            const input = this.fhevm.createEncryptedInput(this.token.target, this.operator.address);
-            input.add64(100);
-            const encryptedInput = await input.encrypt();
+              beforeEach(async function () {
+                const input = this.fhevm.createEncryptedInput(this.token.target, this.operator.address);
+                input.add64(100);
+                encryptedInput = await input.encrypt();
 
-            await expect(
-              this.token
-                .connect(this.operator)
-                ["confidentialTransferFrom(address,address,bytes32,bytes)"](
+                params = [
                   this.holder.address,
                   this.recipient.address,
                   encryptedInput.handles[0],
                   encryptedInput.inputProof,
-                ),
-            )
-              .to.be.revertedWithCustomError(this.token, "ConfidentialFungibleTokenUnauthorizedSpender")
-              .withArgs(this.holder.address, this.operator.address);
-          });
+                ];
+                if (withCallback) {
+                  params.push("0x");
+                }
+              });
+
+              it("without operator approval should fail", async function () {
+                await this.token.$_setOperator(this.holder, this.operator, 0);
+
+                await expect(
+                  this.token
+                    .connect(this.operator)
+                    [
+                      withCallback
+                        ? "confidentialTransferFromAndCall(address,address,bytes32,bytes,bytes)"
+                        : "confidentialTransferFrom(address,address,bytes32,bytes)"
+                    ](...params),
+                )
+                  .to.be.revertedWithCustomError(this.token, "ConfidentialFungibleTokenUnauthorizedSpender")
+                  .withArgs(this.holder.address, this.operator.address);
+              });
+
+              it("should be successful", async function () {
+                await this.token
+                  .connect(this.operator)
+                  [
+                    withCallback
+                      ? "confidentialTransferFromAndCall(address,address,bytes32,bytes,bytes)"
+                      : "confidentialTransferFrom(address,address,bytes32,bytes)"
+                  ](...params);
+              });
+            });
+          }
         }
 
         // Edge cases to run with sender as caller
@@ -289,23 +317,23 @@ describe("ConfidentialFungibleToken", function () {
         describe(`using ${usingTransferFrom ? "confidentialTransferFrom" : "confidentialTransfer"} ${
           withCallback ? "with callback" : ""
         }`, function () {
-          async function callTransfer(contract: any, from: any, to: any, amount: any) {
+          async function callTransfer(contract: any, from: any, to: any, amount: any, sender: any = from) {
             let functionParams = [to, amount];
 
             if (withCallback) {
               functionParams.push("0x");
               if (usingTransferFrom) {
                 functionParams.unshift(from);
-                await contract.connect(from).confidentialTransferFromAndCall(...functionParams);
+                await contract.connect(sender).confidentialTransferFromAndCall(...functionParams);
               } else {
-                await contract.connect(from).confidentialTransferAndCall(...functionParams);
+                await contract.connect(sender).confidentialTransferAndCall(...functionParams);
               }
             } else {
               if (usingTransferFrom) {
                 functionParams.unshift(from);
-                await contract.connect(from).confidentialTransferFrom(...functionParams);
+                await contract.connect(sender).confidentialTransferFrom(...functionParams);
               } else {
-                await contract.connect(from).confidentialTransfer(...functionParams);
+                await contract.connect(sender).confidentialTransfer(...functionParams);
               }
             }
           }
@@ -339,6 +367,29 @@ describe("ConfidentialFungibleToken", function () {
               .to.be.revertedWithCustomError(this.token, "ConfidentialFungibleTokenUnauthorizedUseOfEncryptedAmount")
               .withArgs(recipientBalanceHandle, this.holder);
           });
+
+          if (usingTransferFrom) {
+            describe("without operator approval", function () {
+              beforeEach(async function () {
+                await this.token.connect(this.holder).setOperator(this.operator.address, 0);
+                await allowHandle(hre, this.holder, this.operator, await this.token.balanceOf(this.holder));
+              });
+
+              it("should revert", async function () {
+                await expect(
+                  callTransfer(
+                    this.token,
+                    this.holder,
+                    this.recipient,
+                    await this.token.balanceOf(this.holder),
+                    this.operator,
+                  ),
+                )
+                  .to.be.revertedWithCustomError(this.token, "ConfidentialFungibleTokenUnauthorizedSpender")
+                  .withArgs(this.holder.address, this.operator.address);
+              });
+            });
+          }
         });
       }
     });
