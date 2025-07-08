@@ -14,7 +14,7 @@ library TFHESafeMath {
      * and `updated` will be the original value.
      */
     function tryIncrease(euint64 oldValue, euint64 delta) internal returns (ebool success, euint64 updated) {
-        if (euint64.unwrap(oldValue) == 0) {
+        if (!FHE.isInitialized(oldValue)) {
             success = FHE.asEbool(true);
             updated = delta;
         } else {
