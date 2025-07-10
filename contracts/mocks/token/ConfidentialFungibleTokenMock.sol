@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 
 import {SepoliaConfig} from "@fhevm/solidity/config/ZamaConfig.sol";
 import {FHE, euint64, externalEuint64} from "@fhevm/solidity/lib/FHE.sol";
-import {ConfidentialFungibleToken} from "./../token/ConfidentialFungibleToken.sol";
+import {ConfidentialFungibleToken} from "../../token/ConfidentialFungibleToken.sol";
 // solhint-disable func-name-mixedcase
 contract ConfidentialFungibleTokenMock is ConfidentialFungibleToken, SepoliaConfig {
     address private immutable _OWNER;

@@ -35,6 +35,10 @@ const config: HardhatUserConfig = {
     target: 'ethers-v6',
   },
   docgen: require('./docs/config'),
+  exposed: {
+    imports: true,
+    initializers: true,
+  },
 };
 
 export default config;

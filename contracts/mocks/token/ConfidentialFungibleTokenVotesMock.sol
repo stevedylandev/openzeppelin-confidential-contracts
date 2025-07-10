@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {FHE, externalEuint64, euint64} from "@fhevm/solidity/lib/FHE.sol";
 import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
-import {ConfidentialFungibleTokenVotes, ConfidentialFungibleToken, VotesConfidential} from "../token/extensions/ConfidentialFungibleTokenVotes.sol";
+import {ConfidentialFungibleTokenVotes, ConfidentialFungibleToken, VotesConfidential} from "../../token/extensions/ConfidentialFungibleTokenVotes.sol";
 import {ConfidentialFungibleTokenMock} from "./ConfidentialFungibleTokenMock.sol";
 
 abstract contract ConfidentialFungibleTokenVotesMock is ConfidentialFungibleTokenMock, ConfidentialFungibleTokenVotes {

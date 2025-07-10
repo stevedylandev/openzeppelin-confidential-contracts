@@ -1,6 +1,7 @@
 import { FhevmType } from '@fhevm/hardhat-plugin';
+import { time } from '@nomicfoundation/hardhat-network-helpers';
 import { expect } from 'chai';
-import hre, { ethers, fhevm } from 'hardhat';
+import { ethers, fhevm } from 'hardhat';
 
 const name = 'ConfidentialFungibleToken';
 const symbol = 'CFT';
@@ -60,7 +61,7 @@ describe('ConfidentialFungibleTokenWrapper', function () {
           }
 
           await expect(this.token.balanceOf(this.holder)).to.eventually.equal(ethers.parseUnits('1000', 18));
-          const wrappedBalanceHandle = await this.wrapper.balanceOf(this.holder.address);
+          const wrappedBalanceHandle = await this.wrapper.confidentialBalanceOf(this.holder.address);
           await expect(
             fhevm.userDecryptEuint(FhevmType.euint64, wrappedBalanceHandle, this.wrapper.target, this.holder),
           ).to.eventually.equal(0);
@@ -198,7 +199,7 @@ describe('ConfidentialFungibleTokenWrapper', function () {
         .add64(withdrawalAmount)
         .encrypt();
 
-      await this.wrapper.connect(this.holder).setOperator(this.operator.address, Math.round(Date.now() / 1000) + 1000);
+      await this.wrapper.connect(this.holder).setOperator(this.operator.address, (await time.latest()) + 1000);
 
       await this.wrapper
         .connect(this.operator)

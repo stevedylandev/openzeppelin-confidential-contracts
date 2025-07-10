@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {SepoliaConfig} from "@fhevm/solidity/config/ZamaConfig.sol";
 import {FHE, ebool, euint64} from "@fhevm/solidity/lib/FHE.sol";
-import {IConfidentialFungibleTokenReceiver} from "./../interfaces/IConfidentialFungibleTokenReceiver.sol";
+import {IConfidentialFungibleTokenReceiver} from "../../interfaces/IConfidentialFungibleTokenReceiver.sol";
 
 contract ConfidentialFungibleTokenReceiverMock is IConfidentialFungibleTokenReceiver, SepoliaConfig {
     event ConfidentialTransferCallback(bool success);
