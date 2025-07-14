@@ -1,4 +1,4 @@
-import { $VestingWalletCliffExecutorConfidentialFactory } from '../../types/contracts-exposed/finance/VestingWalletCliffExecutorConfidentialFactory.sol/$VestingWalletCliffExecutorConfidentialFactory';
+import { $VestingWalletConfidentialFactoryMock } from '../../types/contracts-exposed/mocks/finance/VestingWalletConfidentialFactoryMock.sol/$VestingWalletConfidentialFactoryMock';
 import { $ConfidentialFungibleTokenMock } from '../../types/contracts-exposed/mocks/token/ConfidentialFungibleTokenMock.sol/$ConfidentialFungibleTokenMock';
 import { FhevmType } from '@fhevm/hardhat-plugin';
 import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs';
@@ -32,8 +32,8 @@ describe('VestingWalletCliffExecutorConfidentialFactory', function () {
       .encrypt();
 
     const factory = (await ethers.deployContract(
-      '$VestingWalletCliffExecutorConfidentialFactoryMock',
-    )) as unknown as $VestingWalletCliffExecutorConfidentialFactory;
+      '$VestingWalletConfidentialFactoryMock',
+    )) as unknown as $VestingWalletConfidentialFactoryMock;
 
     await token
       .connect(holder)
@@ -247,5 +247,48 @@ describe('VestingWalletCliffExecutorConfidentialFactory', function () {
         encryptedInput.inputProof,
       ),
     ).to.be.revertedWithCustomError(this.factory, 'OwnableInvalidOwner');
+  });
+
+  it('should be able to claim tokens after creating wallet', async function () {
+    const encryptedInput = await fhevm
+      .createEncryptedInput(await this.factory.getAddress(), this.holder.address)
+      .add64(amount1)
+      .encrypt();
+
+    const vestingWalletParams = [this.recipient, startTimestamp, duration, cliff, this.executor];
+
+    const vestingWallet = await ethers.getContractAt(
+      'VestingWalletCliffExecutorConfidential',
+      await this.factory.predictVestingWalletConfidential(...vestingWalletParams),
+    );
+
+    await this.factory.connect(this.holder).batchFundVestingWalletConfidential(
+      this.token.target,
+      [
+        {
+          beneficiary: this.recipient,
+          encryptedAmount: encryptedInput.handles[0],
+          startTimestamp,
+          durationSeconds: duration,
+          cliffSeconds: cliff,
+        },
+      ],
+      this.executor,
+      encryptedInput.inputProof,
+    );
+
+    await this.factory.createVestingWalletConfidential(...vestingWalletParams);
+
+    await time.increaseTo(startTimestamp + duration / 2);
+    await vestingWallet.release(this.token);
+
+    await expect(
+      fhevm.userDecryptEuint(
+        FhevmType.euint64,
+        await this.token.confidentialBalanceOf(this.recipient),
+        this.token.target,
+        this.recipient,
+      ),
+    ).to.eventually.eq(50);
   });
 });
