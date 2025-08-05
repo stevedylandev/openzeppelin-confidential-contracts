@@ -21,12 +21,14 @@ abstract contract VestingWalletConfidentialFactory {
 
     address private immutable _vestingImplementation;
 
+    /// @dev Emitted for each vesting wallet funded within a batch.
     event VestingWalletConfidentialFunded(
         address indexed vestingWalletConfidential,
         address indexed confidentialFungibleToken,
         euint64 transferredAmount,
         bytes initArgs
     );
+    /// @dev Emitted when a vesting wallet is deployed.
     event VestingWalletConfidentialCreated(address indexed vestingWalletConfidential, bytes initArgs);
 
     constructor() {
