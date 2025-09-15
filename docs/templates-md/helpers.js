@@ -252,6 +252,9 @@ function cleanupContent(content) {
     .replace(/https?:\/\/[^\s[]+\[[^\]]+\]/g, match => {
       const urlMatch = match.match(/^(https?:\/\/[^[]+)\[([^\]]+)\]$/);
       return urlMatch ? `[${urlMatch[2]}](${urlMatch[1]})` : match;
+    })
+    .replace(/```[\s\S]*?```|[{}]/g, match => {
+      return match.includes('\n') || match.startsWith('```') ? match : '';
     });
 }
 
@@ -294,7 +297,9 @@ function processAdocContent(content) {
         '<Callout>\n$2\n</Callout>',
       )
       .replace(/^#+\s+.+$/m, '')
-      .replace(/^\n+/, '');
+      .replace(/^\n+/, '')
+      .replace(/(?<!<Callout>\n)^((?!<Callout>).+?)\n<\/Callout>/m, '<Callout>\n$1\n</Callout>')
+      .replace(/<Callout>\nThis document is better viewed at [^\n]*\n<\/Callout>\n?/g, '');
 
     // Cleanup temp files
     try {
