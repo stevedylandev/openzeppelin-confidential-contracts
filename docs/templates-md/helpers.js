@@ -4,6 +4,8 @@ const path = require('path');
 const { execSync } = require('child_process');
 const os = require('os');
 
+const API_DOCS_PATH = 'contracts/5.x/api';
+
 module.exports['oz-version'] = () => version;
 
 module.exports['readme-path'] = opts => {
@@ -170,11 +172,57 @@ function processReferences(content, links) {
     return replacement ? `[${linkText}](${replacement})` : match;
   });
 
+  // Handle cross-references in format {Contract-function-parameters}
+  result = result.replace(
+    /\{([A-Z][a-zA-Z0-9]*)-([a-zA-Z_][a-zA-Z0-9]*)-([^-}]+)\}/g,
+    (match, contract, func, params) => {
+      // Convert dash-separated params to comma-separated, then slugify to match anchor format
+      const commaParams = params
+        .replace(/-bytes\[\]/g, ',bytes[]')
+        .replace(/-uint[0-9]*/g, ',uint$1')
+        .replace(/-address/g, ',address')
+        .replace(/-bool/g, ',bool')
+        .replace(/-string/g, ',string');
+      const slugifiedParams = commaParams.replace(/\W/g, '-');
+      const xrefKey = `xref-${contract}-${func}-${slugifiedParams}`;
+      const replacement = links[xrefKey];
+      if (replacement) {
+        return `[\`${contract}.${func}\`](${replacement})`;
+      }
+      return match;
+    },
+  );
+
+  // Handle cross-references in format {Contract-function-parameters}
+  result = result.replace(
+    /\{([A-Z][a-zA-Z0-9]*)-([a-zA-Z_][a-zA-Z0-9]*)-([^}]+)\}/g,
+    (match, contract, func, params) => {
+      // Convert dash-separated params to comma-separated, then slugify with parentheses to match anchor format
+      const commaParams = params
+        .replace(/-bytes\[\]/g, ',bytes[]')
+        .replace(/-uint[0-9]*/g, ',uint$1')
+        .replace(/-address/g, ',address')
+        .replace(/-bool/g, ',bool')
+        .replace(/-string/g, ',string');
+      const slugifiedParams = `(${commaParams})`.replace(/\W/g, '-');
+      const xrefKey = `xref-${contract}-${func}${slugifiedParams}`;
+      const replacement = links[xrefKey];
+      if (replacement) {
+        return `[\`${contract}.${func}\`](${replacement})`;
+      }
+      return match;
+    },
+  );
+
   // Replace {link-key} placeholders with markdown links
   result = result.replace(/\{([-._a-z0-9]+)\}/gi, (match, key) => {
     const replacement = findBestMatch(key, links);
-    return replacement || match;
+    return replacement || `\`${key}\``;
   });
+
+  // Convert AsciiDoc admonitions to Callout components
+  result = result.replace(/^\[NOTE\]\s*\n====\s*\n([\s\S]*?)\n====$/gm, '<Callout>\n$1\n</Callout>');
+  result = result.replace(/^(WARNING|IMPORTANT):\s*(.+)$/gm, '<Callout type="warn">\n$2\n</Callout>');
 
   return cleanupContent(result);
 }
@@ -252,9 +300,6 @@ function cleanupContent(content) {
     .replace(/https?:\/\/[^\s[]+\[[^\]]+\]/g, match => {
       const urlMatch = match.match(/^(https?:\/\/[^[]+)\[([^\]]+)\]$/);
       return urlMatch ? `[${urlMatch[2]}](${urlMatch[1]})` : match;
-    })
-    .replace(/```[\s\S]*?```|[{}]/g, match => {
-      return match.includes('\n') || match.startsWith('```') ? match : '';
     });
 }
 
@@ -279,7 +324,7 @@ function processAdocContent(content) {
 
     fs.writeFileSync(tempAdocFile, processedContent, 'utf8');
 
-    execSync(`bunx downdoc "${tempAdocFile}"`, {
+    execSync(`npx downdoc "${tempAdocFile}"`, {
       stdio: 'pipe',
       cwd: process.cwd(),
     });
@@ -288,7 +333,7 @@ function processAdocContent(content) {
 
     // Clean up and transform markdown
     mdContent = cleanupContent(mdContent)
-      .replace(/\(api:([^)]+)\.adoc([^)]*)\)/g, '(contracts/v5.x/api/$1.mdx$2)')
+      .replace(/\(api:([^)]+)\.adoc([^)]*)\)/g, `(${API_DOCS_PATH}/$1.mdx$2)`)
       .replace(/!\[([^\]]*)\]\(([^/)][^)]*\.(png|jpg|jpeg|gif|svg|webp))\)/g, '![$1](/$2)')
       .replace(/<dl><dt><strong>💡 TIP<\/strong><\/dt><dd>\s*([\s\S]*?)\s*<\/dd><\/dl>/g, '<Callout>\n$1\n</Callout>')
       .replace(/<dl><dt><strong>📌 NOTE<\/strong><\/dt><dd>\s*([\s\S]*?)\s*<\/dd><\/dl>/g, '<Callout>\n$1\n</Callout>')
