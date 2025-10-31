@@ -179,32 +179,12 @@ function processReferences(content, links) {
     (match, contract, func, params) => {
       const commaParams = params
         .replace(/-bytes\[\]/g, ',bytes[]')
-        .replace(/-uint[0-9]*/g, ',uint$1')
+        .replace(/-uint([0-9]*)/g, ',uint$1')
         .replace(/-address/g, ',address')
         .replace(/-bool/g, ',bool')
         .replace(/-string/g, ',string');
       const slugifiedParams = commaParams.replace(/\W/g, '-');
       const xrefKey = `xref-${contract}-${func}-${slugifiedParams}`;
-      const replacement = links[xrefKey];
-      if (replacement) {
-        return `[\`${contract}.${func}\`](${replacement})`;
-      }
-      return match;
-    },
-  );
-
-  // Handle cross-references in format {Contract-function-parameters}
-  result = result.replace(
-    /\{([A-Z][a-zA-Z0-9]*)-([a-zA-Z_][a-zA-Z0-9]*)-([^}]+)\}/g,
-    (match, contract, func, params) => {
-      const commaParams = params
-        .replace(/-bytes\[\]/g, ',bytes[]')
-        .replace(/-uint[0-9]*/g, ',uint$1')
-        .replace(/-address/g, ',address')
-        .replace(/-bool/g, ',bool')
-        .replace(/-string/g, ',string');
-      const slugifiedParams = `(${commaParams})`.replace(/\W/g, '-');
-      const xrefKey = `xref-${contract}-${func}${slugifiedParams}`;
       const replacement = links[xrefKey];
       if (replacement) {
         return `[\`${contract}.${func}\`](${replacement})`;
@@ -338,7 +318,7 @@ function processAdocContent(content) {
     try {
       fs.unlinkSync(tempAdocFile);
       fs.unlinkSync(tempMdFile);
-      fs.rmdirSync(tempDir);
+      fs.rmSync(tempDir, { recursive: true });
     } catch (cleanupError) {
       console.warn('Warning: Could not clean up temp files:', cleanupError.message);
     }
