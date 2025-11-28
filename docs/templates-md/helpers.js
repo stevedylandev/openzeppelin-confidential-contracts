@@ -8,6 +8,11 @@ const API_DOCS_PATH = 'confidential-contracts/api';
 
 module.exports['oz-version'] = () => version;
 
+module.exports['contract-path'] = absolutePath => {
+  // Strip the 'contracts/' prefix if it exists
+  return absolutePath.replace(/^contracts\//, '');
+};
+
 module.exports['readme-path'] = opts => {
   const pageId = opts.data.root.id;
   const basePath = pageId.replace(/\.(adoc|mdx)$/, '');
